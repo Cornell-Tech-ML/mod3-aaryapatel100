@@ -379,20 +379,17 @@ def tensor_reduce(
         reduce_dim: int,
     ) -> None:
         out_index: Index = np.zeros(MAX_DIMS, np.int32)
+        reduce_size = a_shape[reduce_dim]
         # Iterate through the entire output storage
         for i in range(len(out)):
             # Get the corresponding multidimensional index for output
             to_index(i, out_shape, out_index)
             pos = index_to_position(out_index, out_strides)
-            res = out[pos]
 
             # Iterate over the reduce dimension and apply the reduction function
-            for j in range(a_shape[reduce_dim]):
+            for j in range(reduce_size):
                 out_index[reduce_dim] = j
-                res = fn(res, a_storage[index_to_position(out_index, a_strides)])
-
-            # Store the result in the output storage
-            out[pos] = res
+                out[pos] = fn(out[pos], a_storage[index_to_position(out_index, a_strides)])
 
     return _reduce
 

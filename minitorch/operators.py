@@ -189,8 +189,9 @@ def relu(x: float) -> float:
         float: `x` if `x` is positive, `0` otherwise.
 
     """
-    return max(0.0, x)
+    return x if x > 0 else 0.0
 
+EPS = 1e-6
 
 def log(x: float) -> float:
     """Calculates the natural logarithm.
@@ -204,7 +205,7 @@ def log(x: float) -> float:
         float: The natural logarithm of `x`.
 
     """
-    return math.log(x)
+    return math.log(x + EPS)
 
 
 def exp(x: float) -> float:
@@ -250,7 +251,7 @@ def log_back(x: float, y: float) -> float:
         float: The derivative of log(x) multiplied by `y`.
 
     """
-    return y / x
+    return y / (x+EPS)
 
 
 def inv_back(x: float, y: float) -> float:
@@ -282,9 +283,7 @@ def relu_back(x: float, y: float) -> float:
         float: The derivative of ReLU(x) multiplied by `y`.
 
     """
-    if relu(x) == 0.0:
-        return 0
-    return y
+    return y if x > 0 else 0.0
 
 
 # ## Task 0.3

@@ -65,9 +65,13 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
         out_index : return index corresponding to position.
 
     """
+    # for i in range(len(shape) - 1, -1, -1):
+    #     out_index[i] = ordinal % shape[i]
+    #     ordinal = ordinal // shape[i]
+    cur_ord = ordinal + 0 
     for i in range(len(shape) - 1, -1, -1):
-        out_index[i] = ordinal % shape[i]
-        ordinal = ordinal // shape[i]
+        out_index[i] = int(cur_ord % shape[i])
+        cur_ord = cur_ord // shape[i]   
 
 
 def broadcast_index(
@@ -92,11 +96,12 @@ def broadcast_index(
 
     """
     dim_diff = len(big_shape) - len(shape)
-    for i in range(len(shape)):
-        if shape[i] > 1:
+    for i, s in enumerate(shape):
+        if s > 1:
             out_index[i] = big_index[i + dim_diff]
         else:
             out_index[i] = 0
+    return None
 
 
 def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
