@@ -30,6 +30,17 @@ Fn = TypeVar("Fn")
 
 
 def njit(fn: Fn, **kwargs: Any) -> Fn:
+    """A wrapper around numba's njit which always inlines the function, and
+    also provides type hints.
+
+    Args:
+        fn: The function to compile with njit.
+        **kwargs: Additional keyword arguments to pass to njit.
+
+    Returns:
+        The njitted version of the function.
+
+    """
     return _njit(inline="always", **kwargs)(fn)  # type: ignore
 
 
@@ -337,10 +348,19 @@ def _tensor_matrix_multiply(
     """
     a_batch_stride = a_strides[0] if a_shape[0] > 1 else 0
     b_batch_stride = b_strides[0] if b_shape[0] > 1 else 0
-
-    # TODO: Implement for Task 3.2.
-    raise NotImplementedError("Need to implement for Task 3.2")
-
+    
+    assert a_shape[-1] == b_shape[-2]
+    
+    for depth in prange(out_shape[0]):
+        for i in range(out_shape[1]):
+            for j in range(out_shape[2]):
+                pos = depth * out_strides[0] + i * out_strides[1] + j * out_strides[2]
+                summ = 0.0
+                for k in range(a_shape[-1]):
+                    a_pos = depth * a_batch_stride + i * a_strides[1] + k * a_strides[2]
+                    b_pos = depth * b_batch_stride + k * b_strides[1] + j * b_strides[2]
+                    summ += a_storage[a_pos] * b_storage[b_pos]
+                out[pos] = summ
 
 tensor_matrix_multiply = njit(_tensor_matrix_multiply, parallel=True)
 assert tensor_matrix_multiply is not None
