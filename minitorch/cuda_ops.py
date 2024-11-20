@@ -440,9 +440,8 @@ def tensor_reduce(
             
             # Write final result to output
             cache[pos] = local_reduce
-            
-        cuda.syncthreads()
-        out[i] = cache[pos]
+            cuda.syncthreads()
+            out[pos] = cache[pos]
 
     return jit(_reduce)  # type: ignore
 
