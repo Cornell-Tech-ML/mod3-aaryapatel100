@@ -582,42 +582,72 @@ def _tensor_matrix_multiply(
     #    a) Copy into shared memory for a matrix.
     #    b) Copy into shared memory for b matrix
     #    c) Compute the dot produce for position c[i, j]
-    
-    # Only compute if within output dimensions
-    
-    # Loading in shared arrays
-    
-    # For loop through # of blocks horizontally in tensor A (a_shape[-1] // BLOCK_DIM)
-    # + 1 is because range is exclusive
-    for block in range((a_shape[-1] // BLOCK_DIM) + 1):
-        
-        # Take a_shape[0] could also be a_shape[-2] -> matrix_mul can only ever be done with 2Ds
-        if i < a_shape[-2] and block * BLOCK_DIM + pj < a_shape[-1]:
-            # Calculate position of the value being moved to storage using strides
-            pos = batch * a_batch_stride + i * a_strides[-2] + (block * BLOCK_DIM + pi) * a_strides[-1]
-            a_shared[pi, pj] = a_storage[pos]
+    value = 0.0
+    for tile in range((a_shape[-1] + BLOCK_DIM - 1) // BLOCK_DIM):
+        if i < a_shape[-2] and tile * BLOCK_DIM + pj < a_shape[-1]:
+            a_shared[pi, pj] = a_storage[
+                batch * a_batch_stride
+                + i * a_strides[-2]
+                + (tile * BLOCK_DIM + pj) * a_strides[-1]
+            ]
         else:
             a_shared[pi, pj] = 0.0
-            
-        # Do the same thing for b_shared using its dimensions
-        if j < b_shape[-1] and block * BLOCK_DIM + pi < b_shape[-2]:
-            # Calculate position of the value being moved to storage using strides
-            pos = batch * b_batch_stride + j * b_strides[-1] + (block * BLOCK_DIM + pi) * b_strides[-2]
-            b_shared[pi, pj] = b_storage[pos]
+
+        if tile * BLOCK_DIM + pi < b_shape[-2] and j < b_shape[-1]:
+            b_shared[pi, pj] = b_storage[
+                batch * b_batch_stride
+                + (tile * BLOCK_DIM + pi) * b_strides[-2]
+                + j * b_strides[-1]
+            ]
         else:
             b_shared[pi, pj] = 0.0
-        
-        cuda.syncthreads()
-        value = 0.0
-        # Do the dot product calculations from the shared arrays
-        for k in range(BLOCK_DIM):
-            value += a_shared[pi, k] * b_shared[k, pj]
+
         cuda.syncthreads()
 
-    # Check if thread is within dimensions and find position in global out and assign calculated value
+        for k in range(BLOCK_DIM):
+            value += a_shared[pi, k] * b_shared[k, pj]
+
+        cuda.syncthreads()
+
     if i < out_shape[-2] and j < out_shape[-1]:
-        pos = batch * out_strides[-2] + i * out_strides[-2] + j * out_strides[-1]
-        out[pos] = value
+        out_pos = batch * out_strides[0] + i * out_strides[-2] + j * out_strides[-1]
+        out[out_pos] = value
+    
+    # # Only compute if within output dimensions
+    
+    # # Loading in shared arrays
+    
+    # # For loop through # of blocks horizontally in tensor A (a_shape[-1] // BLOCK_DIM)
+    # # + 1 is because range is exclusive
+    # for block in range((a_shape[-1] // BLOCK_DIM) + 1):
+        
+    #     # Take a_shape[0] could also be a_shape[-2] -> matrix_mul can only ever be done with 2Ds
+    #     if i < a_shape[-2] and block * BLOCK_DIM + pj < a_shape[-1]:
+    #         # Calculate position of the value being moved to storage using strides
+    #         pos = batch * a_batch_stride + i * a_strides[-2] + (block * BLOCK_DIM + pi) * a_strides[-1]
+    #         a_shared[pi, pj] = a_storage[pos]
+    #     else:
+    #         a_shared[pi, pj] = 0.0
+            
+    #     # Do the same thing for b_shared using its dimensions
+    #     if j < b_shape[-1] and block * BLOCK_DIM + pi < b_shape[-2]:
+    #         # Calculate position of the value being moved to storage using strides
+    #         pos = batch * b_batch_stride + j * b_strides[-1] + (block * BLOCK_DIM + pi) * b_strides[-2]
+    #         b_shared[pi, pj] = b_storage[pos]
+    #     else:
+    #         b_shared[pi, pj] = 0.0
+        
+    #     cuda.syncthreads()
+    #     value = 0.0
+    #     # Do the dot product calculations from the shared arrays
+    #     for k in range(BLOCK_DIM):
+    #         value += a_shared[pi, k] * b_shared[k, pj]
+    #     cuda.syncthreads()
+
+    # # Check if thread is within dimensions and find position in global out and assign calculated value
+    # if i < out_shape[-2] and j < out_shape[-1]:
+    #     pos = batch * out_strides[-2] + i * out_strides[-2] + j * out_strides[-1]
+    #     out[pos] = value
 
 
 tensor_matrix_multiply = jit(_tensor_matrix_multiply)
