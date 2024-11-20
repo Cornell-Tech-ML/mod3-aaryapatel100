@@ -425,22 +425,18 @@ def tensor_reduce(
             # Convert linear index to multidimensional output index
             to_index(i, out_shape, out_index)
             
-            # Initialize cache with reduce_value
-            cache[pos] = reduce_value
-            
             # Reduce along the specified dimension
-            reduce_size = a_shape[reduce_dim]
-            for j in range(reduce_size):
+            for j in range(a_shape[reduce_dim]):
                 # Set the reduce dimension index
                 out_index[reduce_dim] = j
                 
                 # Get position and update cache
                 in_pos = index_to_position(out_index, a_strides)
-                cache[pos] = fn(cache[pos], a_storage[in_pos])
+                reduce_value = fn(reduce_value, a_storage[in_pos])
             
             # Write final result to output
             out_pos = index_to_position(out_index, out_strides)
-            out[out_pos] = cache[pos]
+            out[out_pos] = reduce_value
 
     return jit(_reduce)  # type: ignore
 
