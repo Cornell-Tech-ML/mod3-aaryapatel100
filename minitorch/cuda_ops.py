@@ -590,15 +590,14 @@ def _tensor_matrix_multiply(
     value = 0.0
     for block in range((a_shape[-1] // BLOCK_DIM) + 1):
         # Only compute if within output dimensions
-        # Take a_shape[0] could also be a_shape[-2] -> matrix_mul can only ever be done with 2Ds
         if i < a_shape[-2] and block * BLOCK_DIM + pj < a_shape[-1]:
-            # Calculate position of the value being moved to storage using strides
+            # Calculate position of the value being moved to storage using strides (slide in dir. of pj)
             pos = batch * a_batch_stride + i * a_strides[-2] + (block * BLOCK_DIM + pj) * a_strides[-1]
             a_shared[pi, pj] = a_storage[pos]
         else:
             a_shared[pi, pj] = 0.0
             
-        # Do the same thing for b_shared using its dimensions
+        # Do the same thing for b_shared using its dimensions but instead slide in other direction (moving in dir. of pi)
         if block * BLOCK_DIM + pi < b_shape[-2] and j < b_shape[-1]:
             # Calculate position of the value being moved to storage using strides
             pos = batch * b_batch_stride + (block * BLOCK_DIM + pi) * b_strides[-2] + j * b_strides[-1]
@@ -607,7 +606,8 @@ def _tensor_matrix_multiply(
             b_shared[pi, pj] = 0.0
         
         cuda.syncthreads()
-        # Do the dot product calculations from the shared arrays
+        # Do necessary dot product calculations between these internal shared blocks
+        # (thus using local positioning, pi and pj, before current blocks slide)
         for k in range(BLOCK_DIM):
             value += a_shared[pi, k] * b_shared[k, pj]
         cuda.syncthreads()
