@@ -420,42 +420,27 @@ def tensor_reduce(
         i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
         pos = cuda.threadIdx.x
 
-        # Return if thread index exceeds output size
-        if i >= out_size:
-            return
+        # Only proceed if thread is within output size
+        if i < out_size:
+            # Convert linear index to multidimensional output index
+            to_index(i, out_shape, out_index)
             
-        # Calculate output index positions
-        index = i
-        for j in range(len(out_shape) - 1, -1, -1):
-            if out_strides[j] != 0:
-                out_index[j] = index // out_strides[j]
-                index = index % out_strides[j]
-            else:
-                out_index[j] = 0
-
-        # Initialize reduction value in shared memory
-        cache[pos] = reduce_value
-        
-        # Loop over the reduction dimension
-        for j in range(a_shape[reduce_dim]):
-            # Calculate input index
-            in_idx = 0
-            cur_pos = 0
-            for s in range(len(a_shape)):
-                if s == reduce_dim:
-                    cur_pos = j
-                else:
-                    cur_pos = out_index[s if s < reduce_dim else s-1]
-                in_idx += cur_pos * a_strides[s]
+            # Initialize cache with reduce_value
+            cache[pos] = reduce_value
             
-            # Perform reduction operation
-            cache[pos] = fn(cache[pos], a_storage[in_idx])
+            # Reduce along the specified dimension
+            reduce_size = a_shape[reduce_dim]
+            for j in range(reduce_size):
+                # Set the reduce dimension index
+                out_index[reduce_dim] = j
+                
+                # Get position and update cache
+                in_pos = index_to_position(out_index, a_strides)
+                cache[pos] = fn(cache[pos], a_storage[in_pos])
             
-        # Ensure all threads have completed their reductions
-        cuda.syncthreads()
-        
-        # Store final result
-        out[i] = cache[pos]
+            # Write final result to output
+            out_pos = index_to_position(out_index, out_strides)
+            out[out_pos] = cache[pos]
 
     return jit(_reduce)  # type: ignore
 
