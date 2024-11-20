@@ -492,7 +492,7 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
     result = 0.0
     if i < size and j < size:
         for k in range(size):
-            result += a_shared[j, k] * b_shared[k, i]
+            result += a_shared[i, k] * b_shared[k, j]
 
     # Write result to global memory
     out[i * size + j] = result
