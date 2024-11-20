@@ -560,7 +560,7 @@ def _tensor_matrix_multiply(
     Returns:
         None : Fills in `out`
     """
-    raise NotImplementedError("Need to implement for Task 3.4")
+    # raise NotImplementedError("Need to implement for Task 3.4")
     a_batch_stride = a_strides[0] if a_shape[0] > 1 else 0
     b_batch_stride = b_strides[0] if b_shape[0] > 1 else 0
     # Batch dimension - fixed
@@ -584,6 +584,54 @@ def _tensor_matrix_multiply(
     #    b) Copy into shared memory for b matrix
     #    c) Compute the dot produce for position c[i, j]
     # TODO: Implement for Task 3.4.
+    # Only compute if within output dimensions
+    if i < out_shape[1] and j < out_shape[2]:
+        # Initialize accumulator for dot product
+        acc = 0.0
+        
+        # Move across shared dimension by block dim
+        for k_start in range(0, a_shape[2], BLOCK_DIM):
+            # Clear shared memory arrays
+            a_shared[pi, pj] = 0.0
+            b_shared[pi, pj] = 0.0
+            cuda.syncthreads()
+            
+            # Load a chunk of matrices into shared memory
+            k = k_start + pj
+            if i < a_shape[1] and k < a_shape[2]:
+                a_pos = (
+                    batch * a_batch_stride +  # Batch offset
+                    i * a_strides[1] +        # Row offset
+                    k * a_strides[2]          # Column offset
+                )
+                a_shared[pi, pj] = a_storage[a_pos]
+            
+            k = k_start + pi
+            if k < b_shape[1] and j < b_shape[2]:
+                b_pos = (
+                    batch * b_batch_stride +  # Batch offset
+                    k * b_strides[1] +        # Row offset
+                    j * b_strides[2]          # Column offset
+                )
+                b_shared[pi, pj] = b_storage[b_pos]
+            
+            # Ensure all threads have loaded their data
+            cuda.syncthreads()
+            
+            # Compute partial dot product for this block
+            for k in range(min(BLOCK_DIM, a_shape[2] - k_start)):
+                acc += a_shared[pi, k] * b_shared[k, pj]
+            
+            # Ensure all threads are done with shared memory before next iteration
+            cuda.syncthreads()
+        
+        # Write result to global memory
+        out_pos = (
+            batch * out_strides[0] +  # Batch offset
+            i * out_strides[1] +      # Row offset
+            j * out_strides[2]        # Column offset
+        )
+        out[out_pos] = acc
 
 
 tensor_matrix_multiply = jit(_tensor_matrix_multiply)
