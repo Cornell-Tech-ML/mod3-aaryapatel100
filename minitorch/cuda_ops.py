@@ -1,6 +1,7 @@
 # type: ignore
 # Currently pyright doesn't support numba.cuda
 
+from functools import reduce
 from typing import Callable, Optional, TypeVar, Any
 
 import numba
@@ -48,6 +49,20 @@ def device_jit(fn: Fn, **kwargs) -> Fn:
 
 
 def jit(fn, **kwargs) -> FakeCUDAKernel:
+    """A wrapper around numba's CUDA JIT compilation.
+
+    This function compiles the given function `fn` to run on a CUDA-capable GPU.
+    It uses numba's `jit` with `target="cuda"`, allowing `fn` to be called 
+    from other CUDA device functions or kernels.
+
+    Args:
+        fn: The function to compile for CUDA execution.
+        **kwargs: Additional keyword arguments to pass to the JIT compiler.
+
+    Returns:
+        The jitted version of the function, callable within CUDA kernels.
+        
+    """
     return _jit(**kwargs)(fn)  # type: ignore
 
 
@@ -100,6 +115,23 @@ class CudaOps(TensorOps):
     def reduce(
         fn: Callable[[float, float], float], start: float = 0.0
     ) -> Callable[[Tensor, int], Tensor]:
+        """CUDA higher-order tensor reduce function.
+
+        This function compiles a given reduction function to run on a CUDA-capable GPU.
+        It reduces a tensor `a` along a specified dimension `dim` using the provided 
+        binary operator `fn`, starting from the value `start`.
+
+        Args:
+        ----
+            fn: A binary function that maps two floats to a float, used for reduction.
+            start: The starting value for the reduction.
+
+        Returns:
+        -------
+            A function that takes a tensor `a` and an integer `dim`, and returns 
+            a new tensor reduced along the given dimension.
+            
+        """
         cufn: Callable[[float, float], float] = device_jit(fn)
         f = tensor_reduce(cufn)
 
@@ -121,6 +153,30 @@ class CudaOps(TensorOps):
     @staticmethod
     def matrix_multiply(a: Tensor, b: Tensor) -> Tensor:
         # Make these always be a 3 dimensional multiply
+        """Batched tensor matrix multiply ::
+
+            for n:
+              for i:
+                for j:
+                  for k:
+                    out[n, i, j] += a[n, i, k] * b[n, k, j]
+
+        Where n indicates an optional broadcasted batched dimension.
+
+        Should work for tensor shapes of 3 dims ::
+
+            assert a.shape[-1] == b.shape[-2]
+
+        Args:
+        ----
+            a : tensor data a
+            b : tensor data b
+
+        Returns:
+        -------
+            New tensor data
+            
+        """
         both_2d = 0
         if len(a.shape) == 2:
             a = a.contiguous().view(1, a.shape[0], a.shape[1])
@@ -211,8 +267,6 @@ def tensor_map(
             out_pos = index_to_position(out_index, out_strides)
 
             out[out_pos] = fn(in_storage[in_pos])
-        # # TODO: Implement for Task 3.3.
-        # raise NotImplementedError("Need to implement for Task 3.3")
 
     return cuda.jit()(_map)  # type: ignore
 
@@ -264,9 +318,6 @@ def tensor_zip(
 
             out[out_pos] = fn(a_storage[a_pos], b_storage[b_pos])
 
-        # TODO: Implement for Task 3.3.
-        # raise NotImplementedError("Need to implement for Task 3.3")
-
     return cuda.jit()(_zip)  # type: ignore
 
 
@@ -311,14 +362,21 @@ def _sum_practice(out: Storage, a: Storage, size: int) -> None:
 
         if pos == 0:
             out[cuda.blockIdx.x] = cache[0]
-    # # TODO: Implement for Task 3.3.
-    # raise NotImplementedError("Need to implement for Task 3.3")
 
 
 jit_sum_practice = cuda.jit()(_sum_practice)
 
 
 def sum_practice(a: Tensor) -> TensorData:
+    """Compute the sum of all values in a tensor in parallel on the GPU.
+
+    Args:
+        a (Tensor): the tensor to sum
+
+    Returns:
+        TensorData: A tensor with a single element containing the sum of all values in the input tensor.
+
+    """
     (size,) = a.shape
     threadsperblock = THREADS_PER_BLOCK
     blockspergrid = (size // THREADS_PER_BLOCK) + 1
@@ -359,11 +417,45 @@ def tensor_reduce(
         BLOCK_DIM = 1024
         cache = cuda.shared.array(BLOCK_DIM, numba.float64)
         out_index = cuda.local.array(MAX_DIMS, numba.int32)
-        out_pos = cuda.blockIdx.x
+        i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
         pos = cuda.threadIdx.x
 
-        # # TODO: Implement for Task 3.3.
-        # raise NotImplementedError("Need to implement for Task 3.3")
+        # Return if thread index exceeds output size
+        if i >= out_size:
+            return
+            
+        # Calculate output index positions
+        index = i
+        for j in range(len(out_shape) - 1, -1, -1):
+            if out_strides[j] != 0:
+                out_index[j] = index // out_strides[j]
+                index = index % out_strides[j]
+            else:
+                out_index[j] = 0
+
+        # Initialize reduction value in shared memory
+        cache[pos] = reduce_value
+        
+        # Loop over the reduction dimension
+        for j in range(a_shape[reduce_dim]):
+            # Calculate input index
+            in_idx = 0
+            cur_pos = 0
+            for s in range(len(a_shape)):
+                if s == reduce_dim:
+                    cur_pos = j
+                else:
+                    cur_pos = out_index[s if s < reduce_dim else s-1]
+                in_idx += cur_pos * a_strides[s]
+            
+            # Perform reduction operation
+            cache[pos] = fn(cache[pos], a_storage[in_idx])
+            
+        # Ensure all threads have completed their reductions
+        cuda.syncthreads()
+        
+        # Store final result
+        out[i] = cache[pos]
 
     return jit(_reduce)  # type: ignore
 
@@ -400,8 +492,8 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
 
     """
     BLOCK_DIM = 32
-    # TODO: Implement for Task 3.3.
-    raise NotImplementedError("Need to implement for Task 3.3")
+    # TODO: Implement for Task 3.4.
+    raise NotImplementedError("Need to implement for Task 3.4")
 
 
 jit_mm_practice = jit(_mm_practice)
