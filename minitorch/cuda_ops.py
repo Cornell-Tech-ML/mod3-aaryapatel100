@@ -487,16 +487,15 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
         for k in range(size):
             a_shared[i, k] = a[i * size + k]
             b_shared[k, j] = b[k * size + j]
-        cuda.syncthreads()
+    cuda.syncthreads()
         
-        result = 0.0
+    result = 0.0
+    if i < size and j < size:
         for k in range(size):
             result += a_shared[j, k] * b_shared[k, i]
 
-        # Write result to global memory
-        out[i * size + j] = result
-    else:
-        out[i * size + j] = 0.0
+    # Write result to global memory
+    out[i * size + j] = result
         
         
 jit_mm_practice = jit(_mm_practice)
