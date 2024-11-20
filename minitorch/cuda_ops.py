@@ -484,6 +484,9 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
     i, j = cuda.threadIdx.x, cuda.threadIdx.y
     
     if i < size and j < size:
+        out[i*size + j] = 0.0
+        
+    if i < size and j < size:
         for k in range(size):
             a_shared[i, k] = a[i * size + k]
             b_shared[k, j] = b[k * size + j]
@@ -550,6 +553,7 @@ def _tensor_matrix_multiply(
     Returns:
         None : Fills in `out`
     """
+    raise NotImplementedError("Need to implement for Task 3.4")
     a_batch_stride = a_strides[0] if a_shape[0] > 1 else 0
     b_batch_stride = b_strides[0] if b_shape[0] > 1 else 0
     # Batch dimension - fixed
@@ -573,7 +577,6 @@ def _tensor_matrix_multiply(
     #    b) Copy into shared memory for b matrix
     #    c) Compute the dot produce for position c[i, j]
     # TODO: Implement for Task 3.4.
-    raise NotImplementedError("Need to implement for Task 3.4")
 
 
 tensor_matrix_multiply = jit(_tensor_matrix_multiply)
