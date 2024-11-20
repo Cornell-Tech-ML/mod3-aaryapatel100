@@ -1,8 +1,11 @@
 import random
 from collections import defaultdict
+
+import sys
+sys.path.append("/content/mod3-aaryapatel100") 
+
 import minitorch
 import time
-import sys
 import numpy as np
 
 FastTensorBackend = minitorch.TensorBackend(minitorch.FastOps)
