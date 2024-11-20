@@ -593,7 +593,7 @@ def _tensor_matrix_multiply(
         # Take a_shape[0] could also be a_shape[-2] -> matrix_mul can only ever be done with 2Ds
         if i < a_shape[-2] and block * BLOCK_DIM + pj < a_shape[-1]:
             # Calculate position of the value being moved to storage using strides
-            pos = batch * a_batch_stride + i * a_strides[-2] + (block * BLOCK_DIM + pi) * a_strides[-1]
+            pos = batch * a_batch_stride + i * a_strides[-2] + (block * BLOCK_DIM + pj) * a_strides[-1]
             a_shared[pi, pj] = a_storage[pos]
         else:
             a_shared[pi, pj] = 0.0
@@ -601,7 +601,7 @@ def _tensor_matrix_multiply(
         # Do the same thing for b_shared using its dimensions
         if block * BLOCK_DIM + pi < b_shape[-2] and j < b_shape[-1]:
             # Calculate position of the value being moved to storage using strides
-            pos = batch * b_batch_stride + j * b_strides[-1] + (block * BLOCK_DIM + pi) * b_strides[-2]
+            pos = batch * b_batch_stride + (block * BLOCK_DIM + pi) * b_strides[-2] + j * b_strides[-1]
             b_shared[pi, pj] = b_storage[pos]
         else:
             b_shared[pi, pj] = 0.0
