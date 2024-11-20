@@ -419,29 +419,30 @@ def tensor_reduce(
         out_index = cuda.local.array(MAX_DIMS, numba.int32)
         i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
         pos = cuda.threadIdx.x
-
+        
         # Only proceed if thread is within output size
-        # if i < out_size:
-        #     # Convert linear index to multidimensional output index
-        #     to_index(i, out_shape, out_index)
+        if i < out_size:
+            # Convert linear index to multidimensional output index
+            to_index(i, out_shape, out_index)
             
-        #     # Initialize cache with reduce_value
-        #     local_reduce = reduce_value
+            # Initialize cache with reduce_value
+            local_reduce = reduce_value
             
-        #     # Reduce along the specified dimension
-        #     reduce_size = a_shape[reduce_dim]
-        #     for j in range(reduce_size):
-        #         # Set the reduce dimension index
-        #         out_index[reduce_dim] = j
+            # Reduce along the specified dimension
+            reduce_size = a_shape[reduce_dim]
+            for j in range(reduce_size):
+                # Set the reduce dimension index
+                out_index[reduce_dim] = j
                 
-        #         # Get position and update cache
-        #         in_pos = index_to_position(out_index, a_strides)
-        #         local_reduce = fn(local_reduce, a_storage[in_pos])
+                # Get position and update cache
+                in_pos = index_to_position(out_index, a_strides)
+                local_reduce = fn(local_reduce, a_storage[in_pos])
             
-        #     # Write final result to output
-        #     out_pos = index_to_position(out_index, out_strides)
-        #     out[out_pos] = local_reduce
-        raise NotImplementedError("Need to implement for Task 3.4")
+            # Write final result to output
+            cache[pos] = local_reduce
+            
+        cuda.syncthreads()
+        out[i] = cache[pos]
 
     return jit(_reduce)  # type: ignore
 
