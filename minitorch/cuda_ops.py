@@ -588,9 +588,7 @@ def _tensor_matrix_multiply(
     # For loop through # of blocks horizontally in tensor A (a_shape[-1] // BLOCK_DIM)
     # + 1 is because range is exclusive
     value = 0.0
-    # for block in range((a_shape[-1] // BLOCK_DIM) + 1):
-    for block in range((a_shape[-1] + BLOCK_DIM - 1) // BLOCK_DIM):
-        
+    for block in range((a_shape[-1] // BLOCK_DIM) + 1):
         # Only compute if within output dimensions
         # Take a_shape[0] could also be a_shape[-2] -> matrix_mul can only ever be done with 2Ds
         if i < a_shape[-2] and block * BLOCK_DIM + pj < a_shape[-1]:
@@ -616,7 +614,7 @@ def _tensor_matrix_multiply(
 
     # Check if thread is within dimensions and find position in global out and assign calculated value
     if i < out_shape[-2] and j < out_shape[-1]:
-        pos = batch * out_strides[-2] + i * out_strides[-2] + j * out_strides[-1]
+        pos = batch * out_strides[0] + i * out_strides[-2] + j * out_strides[-1]
         out[pos] = value
 
 
