@@ -65,7 +65,7 @@ class FastTrain:
         BATCH = 10
         losses = []
 
-        for epoch in range(max_epochs):
+        for epoch in range(max_epochs+1):
             total_loss = 0.0
             start = time.time()
             c = list(zip(data.X, data.y))

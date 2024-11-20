@@ -30,3 +30,25 @@ python sync_previous_module.py previous-module-dir current-module-dir
 The files that will be synced are:
 
         minitorch/tensor_data.py minitorch/tensor_functions.py minitorch/tensor_ops.py minitorch/operators.py minitorch/scalar.py minitorch/scalar_functions.py minitorch/module.py minitorch/autodiff.py minitorch/module.py project/run_manual.py project/run_scalar.py project/run_tensor.py minitorch/operators.py minitorch/module.py minitorch/autodiff.py minitorch/tensor.py minitorch/datasets.py minitorch/testing.py minitorch/optim.py
+
+# Minitorch Module 3 Outputs
+## Module 3.1: Parallel Checks
+
+## Module 3.2: Parallel Checks
+
+## Module 3.4
+### Time Graph
+![Speed Graph](speedGraph.png)
+
+### Training Logs
+`!cd $DIR; PYTHONPATH=/content/$DIR python3.12 project/run_fast_tensor.py --BACKEND gpu --HIDDEN 100 --DATASET split --RATE 0.05`
+![Log outputs for GPU on split dataset](splitGPULogs.png)
+
+`!cd $DIR; PYTHONPATH=/content/$DIR python3.12 project/run_fast_tensor.py --BACKEND gpu --HIDDEN 100 --DATASET split --RATE 0.05`
+![Log outputs for GPU on simple dataset](simpleGPULogs.png)
+
+`!cd $DIR; PYTHONPATH=/content/$DIR python3.12 project/run_fast_tensor.py --BACKEND gpu --HIDDEN 100 --DATASET xor --RATE 0.05`
+![Log outputs for GPU on xor dataset](xorGPULogs.png)
+
+`!cd $DIR; PYTHONPATH=/content/$DIR python3.12 project/run_fast_tensor.py --BACKEND gpu --HIDDEN 200 --DATASET split --RATE 0.05`
+![Log outputs for GPU on simple dataset with 200 hidden](simpleGPU.png)
