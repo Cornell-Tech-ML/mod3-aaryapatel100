@@ -361,7 +361,7 @@ def _sum_practice(out: Storage, a: Storage, size: int) -> None:
             cuda.syncthreads()
 
         if pos == 0:
-            out[pos] = cache[0]
+            out[cuda.blockIdx.x] = cache[0]
 
 
 jit_sum_practice = cuda.jit()(_sum_practice)
@@ -425,17 +425,22 @@ def tensor_reduce(
             # Convert linear index to multidimensional output index
             to_index(i, out_shape, out_index)
             
+            # Initialize cache with reduce_value
+            local_reduce = reduce_value
+            
             # Reduce along the specified dimension
-            for j in range(a_shape[reduce_dim]):
+            reduce_size = a_shape[reduce_dim]
+            for j in range(reduce_size):
                 # Set the reduce dimension index
                 out_index[reduce_dim] = j
+                
+                # Get position and update cache
                 in_pos = index_to_position(out_index, a_strides)
-                # Do reduction
-                reduce_value = fn(reduce_value, a_storage[in_pos])
+                local_reduce = fn(local_reduce, a_storage[in_pos])
             
             # Write final result to output
             out_pos = index_to_position(out_index, out_strides)
-            out[out_pos] = reduce_value
+            out[out_pos] = local_reduce
 
     return jit(_reduce)  # type: ignore
 
