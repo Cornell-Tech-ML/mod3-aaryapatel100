@@ -40,15 +40,19 @@ The files that will be synced are:
 ### Time Graph
 ![Speed Graph](speedGraph.png)
 
-### Training Logs
+## Module 3.5
+### Split Dataset (GPU & CPU)
 `!cd $DIR; PYTHONPATH=/content/$DIR python3.12 project/run_fast_tensor.py --BACKEND gpu --HIDDEN 100 --DATASET split --RATE 0.05`
 ![Log outputs for GPU on split dataset](splitGPULogs.png)
 
+### Simple Dataset (GPU & CPU)
 `!cd $DIR; PYTHONPATH=/content/$DIR python3.12 project/run_fast_tensor.py --BACKEND gpu --HIDDEN 100 --DATASET split --RATE 0.05`
 ![Log outputs for GPU on simple dataset](simpleGPULogs.png)
 
+### XOR Dataset (GPU & CPU)
 `!cd $DIR; PYTHONPATH=/content/$DIR python3.12 project/run_fast_tensor.py --BACKEND gpu --HIDDEN 100 --DATASET xor --RATE 0.05`
 ![Log outputs for GPU on xor dataset](xorGPULogs.png)
 
+### Simple (Hidden=200) Dataset (GPU & CPU)
 `!cd $DIR; PYTHONPATH=/content/$DIR python3.12 project/run_fast_tensor.py --BACKEND gpu --HIDDEN 200 --DATASET split --RATE 0.05`
-![Log outputs for GPU on simple dataset with 200 hidden](simpleGPU.png)
+![Log outputs for GPU on simple dataset with 200 hidden](simpleGPU200Logs.png)

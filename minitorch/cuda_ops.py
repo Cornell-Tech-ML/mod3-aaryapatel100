@@ -1,7 +1,6 @@
 # type: ignore
 # Currently pyright doesn't support numba.cuda
 
-from functools import reduce
 from typing import Callable, Optional, TypeVar, Any
 
 import numba
@@ -30,38 +29,42 @@ FakeCUDAKernel = Any
 Fn = TypeVar("Fn")
 
 
-def device_jit(fn: Fn, **kwargs) -> Fn:
+def device_jit(fn: Fn, **kwargs) -> Fn:  # noqa: ANN003
     """A wrapper around numba's CUDA device JIT compilation.
 
     This function compiles the given function `fn` to run on a CUDA-capable GPU.
-    It uses numba's `jit` with `device=True`, allowing `fn` to be called 
+    It uses numba's `jit` with `device=True`, allowing `fn` to be called
     from other CUDA device functions or kernels.
 
     Args:
+    ----
         fn: The function to compile for CUDA device execution.
         **kwargs: Additional keyword arguments to pass to the JIT compiler.
 
     Returns:
+    -------
         The device-jitted version of the function, callable within CUDA kernels.
 
     """
     return _jit(device=True, **kwargs)(fn)  # type: ignore
 
 
-def jit(fn, **kwargs) -> FakeCUDAKernel:
+def jit(fn, **kwargs) -> FakeCUDAKernel:  # noqa: ANN001, ANN003
     """A wrapper around numba's CUDA JIT compilation.
 
     This function compiles the given function `fn` to run on a CUDA-capable GPU.
-    It uses numba's `jit` with `target="cuda"`, allowing `fn` to be called 
+    It uses numba's `jit` with `target="cuda"`, allowing `fn` to be called
     from other CUDA device functions or kernels.
 
     Args:
+    ----
         fn: The function to compile for CUDA execution.
         **kwargs: Additional keyword arguments to pass to the JIT compiler.
 
     Returns:
+    -------
         The jitted version of the function, callable within CUDA kernels.
-        
+
     """
     return _jit(**kwargs)(fn)  # type: ignore
 
@@ -96,6 +99,7 @@ class CudaOps(TensorOps):
 
     @staticmethod
     def zip(fn: Callable[[float, float], float]) -> Callable[[Tensor, Tensor], Tensor]:
+        """See `tensor_ops.py`"""
         cufn: Callable[[float, float], float] = device_jit(fn)
         f = tensor_zip(cufn)
 
@@ -118,7 +122,7 @@ class CudaOps(TensorOps):
         """CUDA higher-order tensor reduce function.
 
         This function compiles a given reduction function to run on a CUDA-capable GPU.
-        It reduces a tensor `a` along a specified dimension `dim` using the provided 
+        It reduces a tensor `a` along a specified dimension `dim` using the provided
         binary operator `fn`, starting from the value `start`.
 
         Args:
@@ -128,9 +132,9 @@ class CudaOps(TensorOps):
 
         Returns:
         -------
-            A function that takes a tensor `a` and an integer `dim`, and returns 
+            A function that takes a tensor `a` and an integer `dim`, and returns
             a new tensor reduced along the given dimension.
-            
+
         """
         cufn: Callable[[float, float], float] = device_jit(fn)
         f = tensor_reduce(cufn)
@@ -175,7 +179,7 @@ class CudaOps(TensorOps):
         Returns:
         -------
             New tensor data
-            
+
         """
         both_2d = 0
         if len(a.shape) == 2:
@@ -252,14 +256,15 @@ def tensor_map(
 
           assert len(out_shape) == len(in_shape)
 
-        Returns:
+        Returns
+        -------
             None : Fills in `out`
 
         """
         out_index = cuda.local.array(MAX_DIMS, numba.int32)
         in_index = cuda.local.array(MAX_DIMS, numba.int32)
         i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
-        
+
         if i < out_size:
             to_index(i, out_shape, out_index)
             broadcast_index(out_index, out_shape, in_shape, in_index)
@@ -365,6 +370,7 @@ def _sum_practice(out: Storage, a: Storage, size: int) -> None:
     if pos == 0:
         out[cuda.blockIdx.x] = cache[0]
 
+
 jit_sum_practice = cuda.jit()(_sum_practice)
 
 
@@ -372,9 +378,11 @@ def sum_practice(a: Tensor) -> TensorData:
     """Compute the sum of all values in a tensor in parallel on the GPU.
 
     Args:
+    ----
         a (Tensor): the tensor to sum
 
     Returns:
+    -------
         TensorData: A tensor with a single element containing the sum of all values in the input tensor.
 
     """
@@ -420,25 +428,25 @@ def tensor_reduce(
         out_index = cuda.local.array(MAX_DIMS, numba.int32)
         i = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
         pos = cuda.threadIdx.x
-        
+
         # Only proceed if thread is within output size
         if i < out_size:
             # Convert linear index to multidimensional output index
             to_index(i, out_shape, out_index)
-            
+
             # Initialize cache with reduce_value
             local_reduce = reduce_value
-            
+
             # Reduce along the specified dimension
             reduce_size = a_shape[reduce_dim]
             for j in range(reduce_size):
                 # Set the reduce dimension index
                 out_index[reduce_dim] = j
-                
+
                 # Get position and update cache
                 in_pos = index_to_position(out_index, a_strides)
                 local_reduce = fn(local_reduce, a_storage[in_pos])
-            
+
             # Write final result to output
             cache[pos] = local_reduce
             cuda.syncthreads()
@@ -481,31 +489,31 @@ def _mm_practice(out: Storage, a: Storage, b: Storage, size: int) -> None:
     BLOCK_DIM = 32
     a_shared = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
     b_shared = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64)
-    
+
     # Get thread indices
     tx = cuda.threadIdx.x  # Thread x-coordinate
     ty = cuda.threadIdx.y  # Thread y-coordinate
-    
+
     # Each thread computes one element of the output matrix
     if tx < size and ty < size:
         # Initialize output value
         tmp = 0.0
-        
+
         # Load input matrices into shared memory
         a_shared[ty, tx] = a[ty * size + tx]
         b_shared[ty, tx] = b[ty * size + tx]
-        
+
         # Ensure all threads have loaded their data
         cuda.syncthreads()
-        
+
         # Compute dot product for this element
         for k in range(size):
             tmp += a_shared[ty, k] * b_shared[k, tx]
-            
+
         # Write result to global memory
         out[ty * size + tx] = tmp
-        
-        
+
+
 jit_mm_practice = jit(_mm_practice)
 
 
@@ -582,9 +590,9 @@ def _tensor_matrix_multiply(
     #    a) Copy into shared memory for a matrix.
     #    b) Copy into shared memory for b matrix
     #    c) Compute the dot produce for position c[i, j]
-    
+
     # Loading in shared arrays
-    
+
     # For loop through # of blocks horizontally in tensor A (a_shape[-1] // BLOCK_DIM)
     # + 1 is because range is exclusive
     value = 0.0
@@ -592,19 +600,27 @@ def _tensor_matrix_multiply(
         # Only compute if within output dimensions
         if i < a_shape[-2] and block * BLOCK_DIM + pj < a_shape[-1]:
             # Calculate position of the value being moved to storage using strides (slide in dir. of pj)
-            pos = batch * a_batch_stride + i * a_strides[-2] + (block * BLOCK_DIM + pj) * a_strides[-1]
+            pos = (
+                batch * a_batch_stride
+                + i * a_strides[-2]
+                + (block * BLOCK_DIM + pj) * a_strides[-1]
+            )
             a_shared[pi, pj] = a_storage[pos]
         else:
             a_shared[pi, pj] = 0.0
-            
+
         # Do the same thing for b_shared using its dimensions but instead slide in other direction (moving in dir. of pi)
         if block * BLOCK_DIM + pi < b_shape[-2] and j < b_shape[-1]:
             # Calculate position of the value being moved to storage using strides
-            pos = batch * b_batch_stride + (block * BLOCK_DIM + pi) * b_strides[-2] + j * b_strides[-1]
+            pos = (
+                batch * b_batch_stride
+                + (block * BLOCK_DIM + pi) * b_strides[-2]
+                + j * b_strides[-1]
+            )
             b_shared[pi, pj] = b_storage[pos]
         else:
             b_shared[pi, pj] = 0.0
-        
+
         cuda.syncthreads()
         # Do necessary dot product calculations between these internal shared blocks
         # (thus using local positioning, pi and pj, before current blocks slide)

@@ -98,6 +98,7 @@ class Tensor:
     def size(self) -> int:
         """int: Returns the total number of elements in the tensor."""
         return self._tensor.size
+
     @property
     def dims(self) -> int:
         """int: Returns the number of dimensions in the tensor."""
@@ -107,11 +108,13 @@ class Tensor:
         """Changes if the variable requires gradients or not.
 
         Args:
+        ----
         x: bool. If ``True`` , ``requires_grad`` will be ``True``,
             otherwise it will be ``False``. This is only effective when
             this tensor is created with :func:`requires_grad=True`.
 
         Returns:
+        -------
         None
 
         """
@@ -122,7 +125,8 @@ class Tensor:
         otherwise they will not. This is only effective when this tensor is
         created with :func:`requires_grad=True`.
 
-        Returns:
+        Returns
+        -------
         bool: ``True`` if gradients are stored, ``False`` otherwise.
 
         """
@@ -233,6 +237,7 @@ class Tensor:
             Tensor of zeros with shape `shape`.
 
         """
+
         def zero(shape: UserShape) -> Tensor:
             return Tensor.make(
                 [0.0] * int(operators.prod(shape)), shape, backend=self.backend
@@ -502,7 +507,7 @@ class Tensor:
             return self.sum(dim) / self.shape[dim]
         else:
             return self.sum() / self.size
-        
+
     def permute(self, *order: int) -> Tensor:
         """Permute tensor dimensions to *order"""
         return Permute.apply(self, tensor(list(order)))

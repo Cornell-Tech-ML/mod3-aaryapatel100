@@ -177,6 +177,7 @@ class All(Function):
         else:
             return a.f.mul_reduce(a.contiguous().view(int(operators.prod(a.shape))), 0)
 
+
 class Mul(Function):
     @staticmethod
     def forward(ctx: Context, t1: Tensor, t2: Tensor) -> Tensor:
@@ -212,8 +213,8 @@ class Mul(Function):
         """
         t1, t2 = ctx.saved_values
         return (
-            grad_output.f.mul_zip(t2, grad_output), 
-            grad_output.f.mul_zip(t1, grad_output)
+            grad_output.f.mul_zip(t2, grad_output),
+            grad_output.f.mul_zip(t1, grad_output),
         )
 
 
@@ -529,7 +530,7 @@ class Permute(Function):
             Tuple[Tensor, float]: A tuple where the first element is the gradient with respect to the input tensor `t1`, and the second element is a placeholder value `0.0`.
 
         """
-        order: Tensor= ctx.saved_values[0]
+        order: Tensor = ctx.saved_values[0]
         order2: List[int] = [
             a[0]
             for a in sorted(

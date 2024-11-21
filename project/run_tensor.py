@@ -14,7 +14,7 @@ def RParam(*shape):
 
 def default_log_fn(epoch, total_loss, correct, losses):
     print("Epoch ", epoch, " loss ", total_loss, "correct", correct)
-    
+
 class Network(minitorch.Module):
     def __init__(self, hidden_layers):
         super().__init__()

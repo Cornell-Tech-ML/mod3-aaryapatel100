@@ -37,7 +37,7 @@ variable_count = 1
 
 
 class Variable(Protocol):
-    def accumulate_derivative(self, x: Any) -> None: 
+    def accumulate_derivative(self, x: Any) -> None:
         """Accumulates the derivative value during backpropagation.
 
         Args:

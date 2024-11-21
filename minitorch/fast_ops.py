@@ -34,10 +34,12 @@ def njit(fn: Fn, **kwargs: Any) -> Fn:
     also provides type hints.
 
     Args:
+    ----
         fn: The function to compile with njit.
         **kwargs: Additional keyword arguments to pass to njit.
 
     Returns:
+    -------
         The njitted version of the function.
 
     """
@@ -179,9 +181,11 @@ def tensor_map(
         in_shape: Shape,
         in_strides: Strides,
     ) -> None:
-        if np.array_equal(out_shape, in_shape) and np.array_equal(out_strides, in_strides):
+        if np.array_equal(out_shape, in_shape) and np.array_equal(
+            out_strides, in_strides
+        ):
             for i in prange(len(out)):
-                out[i] = fn(in_storage[i])  
+                out[i] = fn(in_storage[i])
         else:
             for i in prange(len(out)):
                 out_index: Index = np.zeros(MAX_DIMS, np.int32)
@@ -230,7 +234,12 @@ def tensor_zip(
         b_strides: Strides,
     ) -> None:
         # stride_aligned = (out_shape == a_shape == b_shape) and (out_strides == a_strides == b_strides)
-        if np.array_equal(out_shape, a_shape) and np.array_equal(out_shape, b_shape) and np.array_equal(out_strides, a_strides) and np.array_equal(out_strides, b_strides):
+        if (
+            np.array_equal(out_shape, a_shape)
+            and np.array_equal(out_shape, b_shape)
+            and np.array_equal(out_strides, a_strides)
+            and np.array_equal(out_strides, b_strides)
+        ):
             for i in prange(len(out)):
                 out[i] = fn(a_storage[i], b_storage[i])
         else:
@@ -298,7 +307,9 @@ def tensor_reduce(
             # Iterate over the reduce dimension and apply the reduction function
             for j in range(reduce_size):
                 out_index[reduce_dim] = j
-                out[pos] = fn(out[pos], a_storage[index_to_position(out_index, a_strides)])
+                out[pos] = fn(
+                    out[pos], a_storage[index_to_position(out_index, a_strides)]
+                )
 
     return njit(_reduce, parallel=True)  # type: ignore
 
@@ -348,9 +359,9 @@ def _tensor_matrix_multiply(
     """
     a_batch_stride = a_strides[0] if a_shape[0] > 1 else 0
     b_batch_stride = b_strides[0] if b_shape[0] > 1 else 0
-    
+
     assert a_shape[-1] == b_shape[-2]
-    
+
     for depth in prange(out_shape[0]):
         for i in range(out_shape[1]):
             for j in range(out_shape[2]):
@@ -361,6 +372,7 @@ def _tensor_matrix_multiply(
                     b_pos = depth * b_batch_stride + k * b_strides[1] + j * b_strides[2]
                     summ += a_storage[a_pos] * b_storage[b_pos]
                 out[pos] = summ
+
 
 tensor_matrix_multiply = njit(_tensor_matrix_multiply, parallel=True)
 assert tensor_matrix_multiply is not None

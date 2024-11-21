@@ -191,7 +191,9 @@ def relu(x: float) -> float:
     """
     return x if x > 0 else 0.0
 
+
 EPS = 1e-6
+
 
 def log(x: float) -> float:
     """Calculates the natural logarithm.
@@ -251,7 +253,7 @@ def log_back(x: float, y: float) -> float:
         float: The derivative of log(x) multiplied by `y`.
 
     """
-    return y / (x+EPS)
+    return y / (x + EPS)
 
 
 def inv_back(x: float, y: float) -> float:

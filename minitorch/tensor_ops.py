@@ -389,7 +389,9 @@ def tensor_reduce(
             # Iterate over the reduce dimension and apply the reduction function
             for j in range(reduce_size):
                 out_index[reduce_dim] = j
-                out[pos] = fn(out[pos], a_storage[index_to_position(out_index, a_strides)])
+                out[pos] = fn(
+                    out[pos], a_storage[index_to_position(out_index, a_strides)]
+                )
 
     return _reduce
 
